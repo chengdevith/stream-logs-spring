@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: stream-log
+
+jenkins:
+  base-url: https://jenkins.devith.it.com
+  username: a8s
+  api-token: 114370eaece8474f1edda18d54b8abf17b

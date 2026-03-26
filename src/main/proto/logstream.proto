@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.logistic.streamlog.proto";
+option java_outer_classname = "LogStreamProto";
+
+package logstream;
+
+service LogStreamService {
+  rpc TriggerAndStreamLogs (TriggerLogRequest) returns (stream LogEvent);
+  rpc StreamExistingLogs (ExistingLogRequest) returns (stream LogEvent);
+}
+
+message TriggerLogRequest {
+  string jenkins_job_name = 1;
+  string app_name = 2;
+}
+
+message ExistingLogRequest {
+  string jenkins_job_name = 1;
+  int32 jenkins_build_number = 2;
+  string app_name = 3;
+}
+
+message LogEvent {
+  string source = 1;
+  string type = 2;
+  string message = 3;
+  string timestamp = 4;
+  string stage = 5;
+  string status = 6;
+  string health = 7;
+}
