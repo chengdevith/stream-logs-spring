@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor
@@ -14,9 +15,9 @@ public class JenkinsClient {
 
     private final RestClient restClient;
     private final JenkinsProperties properties;
+    private final ObjectMapper objectMapper;
 
-
-    public JenkinsProgressiveResponse readProgressiveLog(String jobName, int buildNumber, long start){
+    public JenkinsProgressiveResponse readProgressiveLog(String jobName, int buildNumber, long start) {
         String path = "/job/%s/%d/logText/progressiveText?start=%d"
                 .formatted(jobName, buildNumber, start);
 
@@ -26,7 +27,6 @@ public class JenkinsClient {
                 .toEntity(String.class);
 
         String body = response.getBody() == null ? "" : response.getBody();
-
         String textSizeHeader = response.getHeaders().getFirst("X-Text-Size");
         String moreDataHeader = response.getHeaders().getFirst("X-More-Data");
 
@@ -36,11 +36,10 @@ public class JenkinsClient {
         return new JenkinsProgressiveResponse(body, nextStart, moreData);
     }
 
-    public JenkinsBuildTriggerResponse triggerBuild(String jobName){
-
+    public JenkinsBuildTriggerResponse triggerBuild(String jobName) {
         String path = "/job/%s/build".formatted(jobName);
 
-        var response = restClient.post()
+        ResponseEntity<Void> response = restClient.post()
                 .uri(path)
                 .retrieve()
                 .toBodilessEntity();
@@ -51,20 +50,37 @@ public class JenkinsClient {
         return new JenkinsBuildTriggerResponse(location, queueId);
     }
 
-    private Long extractQueueId(String location) {
-        if (location == null) return null;
+    public JenkinsQueueItemResponse getQueueItem(long queueId) {
+        try {
+            String path = "/queue/item/%d/api/json".formatted(queueId);
 
-        String cleaned = location.endsWith("/") ? location.substring(0, location.length() - 1) : location;
-        String id = cleaned.substring(cleaned.lastIndexOf('/') + 1);
-        return Long.parseLong(id);
+            String rawJson = restClient.get()
+                    .uri(path)
+                    .retrieve()
+                    .body(String.class);
+
+            System.out.println("Jenkins queue raw JSON: " + rawJson);
+
+            if (rawJson == null || rawJson.isBlank()) {
+                throw new IllegalStateException("Empty Jenkins queue response");
+            }
+
+            return objectMapper.readValue(rawJson, JenkinsQueueItemResponse.class);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to parse Jenkins queue item response", e);
+        }
     }
 
-    public JenkinsQueueItemResponse getQueueItem(long queueId) {
-        String path = "/queue/item/%d/api/json".formatted(queueId);
+    private Long extractQueueId(String location) {
+        if (location == null || location.isBlank()) {
+            return null;
+        }
 
-        return restClient.get()
-                .uri(path)
-                .retrieve()
-                .body(JenkinsQueueItemResponse.class);
+        String cleaned = location.endsWith("/")
+                ? location.substring(0, location.length() - 1)
+                : location;
+
+        String id = cleaned.substring(cleaned.lastIndexOf('/') + 1);
+        return Long.parseLong(id);
     }
 }

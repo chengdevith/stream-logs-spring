@@ -1,12 +1,16 @@
 package com.logistic.streamlog.collector.jenkins.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record JenkinsQueueItemResponse(
         Executable executable,
-        boolean cancelled,
+        Boolean cancelled,
         String why
 ) {
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record Executable(
-            int number,
+            Integer number,
             String url
     ) {
     }

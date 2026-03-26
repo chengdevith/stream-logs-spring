@@ -24,11 +24,13 @@ public class JenkinsLogCollector {
                 JenkinsProgressiveResponse chunk =
                         jenkinsClient.readProgressiveLog(jobName, buildNumber, start);
 
-                if (!chunk.text().isBlank()) {
+                if (chunk.text() != null && !chunk.text().isBlank()) {
                     String[] lines = chunk.text().split("\\R");
 
                     for (String line : lines) {
-                        if (line.isBlank()) continue;
+                        if (line == null || line.isBlank()) {
+                            continue;
+                        }
 
                         LogEvent event = LogEvent.newBuilder()
                                 .setSource("jenkins")
@@ -118,11 +120,11 @@ public class JenkinsLogCollector {
         while (true) {
             JenkinsQueueItemResponse queueItem = jenkinsClient.getQueueItem(queueId);
 
-            if (queueItem.cancelled()) {
+            if (Boolean.TRUE.equals(queueItem.cancelled())) {
                 throw new IllegalStateException("Jenkins queue item was cancelled");
             }
 
-            if (queueItem.executable() != null) {
+            if (queueItem.executable() != null && queueItem.executable().number() != null) {
                 LogEvent startedEvent = LogEvent.newBuilder()
                         .setSource("jenkins")
                         .setType("status")
